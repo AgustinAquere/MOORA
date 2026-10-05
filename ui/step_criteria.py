@@ -11,7 +11,6 @@ from data_io.validators import DIRECTIONS, ValidationReport, unique_labels, vali
 from . import state
 from .charts import weights_bar
 from .components import chart, nav_buttons, show_report, table
-from .theme import mode
 
 METHOD_HELP = {
     state.DIRECT: "El decisor asigna los pesos. Si no suman 1, se normalizan automáticamente: "
@@ -87,7 +86,7 @@ def render() -> None:
             table(df, width="stretch")
             st.caption(f"Σ w_j = {w.sum():.6f}")
         with c2:
-            chart(weights_bar(labels, w, mode()), key="weights_chart")
+            chart(weights_bar(labels, w), key="weights_chart")
 
     if analysis.entropy is not None:
         with st.expander("Pasos intermedios del método de entropía", expanded=p.weight_method == state.ENTROPY):

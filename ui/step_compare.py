@@ -10,7 +10,6 @@ from engine import RATIO_SYSTEM, REFERENCE_POINT, spearman_label
 from . import state
 from .charts import contribution_chart, deviation_heatmap, score_bar, slope_chart
 from .components import HIGHLIGHT, chart, md, decimals, nav_buttons, require_results, table
-from .theme import mode
 
 
 def render() -> None:
@@ -21,7 +20,7 @@ def render() -> None:
         nav_buttons(state.STEPS[3])
         return
     r, cmp = analysis.result, analysis.comparison
-    theme, d = mode(), decimals()
+    d = decimals()
 
     # -- Indicador de coincidencia ------------------------------------------
     if cmp.winners_match:
@@ -63,14 +62,14 @@ def render() -> None:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Sistema de Razones — y_i** (mayor es mejor)")
-        chart(score_bar(r, RATIO_SYSTEM, theme, d), key="bar_y")
+        chart(score_bar(r, RATIO_SYSTEM, d), key="bar_y")
     with c2:
         st.markdown("**Punto de Referencia — d_i** (menor es mejor)")
-        chart(score_bar(r, REFERENCE_POINT, theme, d), key="bar_d")
+        chart(score_bar(r, REFERENCE_POINT, d), key="bar_d")
 
     st.subheader("Comparación de posiciones")
     st.caption("Cada línea une la posición de una alternativa en ambos métodos; las líneas cruzadas indican discrepancias.")
-    chart(slope_chart(r, theme), key="slope")
+    chart(slope_chart(r), key="slope")
 
     st.subheader("¿Por qué gana cada alternativa?")
     t1, t2 = st.tabs(["Aportes al Sistema de Razones", "Desvíos respecto del punto de referencia"])
@@ -79,12 +78,12 @@ def render() -> None:
             "Barras apiladas con el aporte ponderado w_j·x*_ij de cada criterio (beneficios a la derecha, costos a la "
             "izquierda). El rombo es el valor neto y_i. Muestra cómo las fortalezas compensan las debilidades."
         )
-        chart(contribution_chart(r, theme), key="contrib")
+        chart(contribution_chart(r), key="contrib")
     with t2:
         st.caption(
             "Desvío ponderado w_j·|r_j − x*_ij| de cada alternativa respecto del ideal. El valor marcado en cada fila "
             "es el máximo (d_i): el Punto de Referencia solo mira ese peor desvío."
         )
-        chart(deviation_heatmap(r, theme, d), key="heatmap")
+        chart(deviation_heatmap(r, d), key="heatmap")
 
     nav_buttons(state.STEPS[3])

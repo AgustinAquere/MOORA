@@ -46,7 +46,7 @@ def table(df: pd.DataFrame, highlight=None, **kwargs) -> None:
 
 
 def chart(fig, key: str | None = None) -> None:
-    st.plotly_chart(fig, theme=None, config=PLOTLY_CONFIG, key=key)
+    st.plotly_chart(fig, theme="streamlit", config=PLOTLY_CONFIG, key=key)
 
 
 def nav_buttons(current: str) -> None:

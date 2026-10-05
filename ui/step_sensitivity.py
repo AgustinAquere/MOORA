@@ -11,7 +11,6 @@ from engine import RATIO_SYSTEM, REFERENCE_POINT, redistribute_weights, sensitiv
 from . import state
 from .charts import sensitivity_chart
 from .components import chart, md, nav_buttons, require_results, table
-from .theme import mode
 
 
 def run_sensitivity(analysis: state.Analysis, cfg: dict):
@@ -41,7 +40,6 @@ def render() -> None:
         st.info("El análisis de sensibilidad de pesos requiere al menos 2 criterios.", icon="ℹ️")
         nav_buttons(state.STEPS[4])
         return
-    theme = mode()
 
     st.markdown(
         "Se varía el peso $w_k$ de un criterio y los demás se renormalizan proporcionalmente "
@@ -91,9 +89,9 @@ def render() -> None:
     key_metric = "score" if metric == "Puntaje" else "rank"
     t1, t2 = st.tabs([RATIO_SYSTEM, REFERENCE_POINT])
     with t1:
-        chart(sensitivity_chart(sens, RATIO_SYSTEM, key_metric, theme), key="sens_sr")
+        chart(sensitivity_chart(sens, RATIO_SYSTEM, key_metric), key="sens_sr")
     with t2:
-        chart(sensitivity_chart(sens, REFERENCE_POINT, key_metric, theme), key="sens_pr")
+        chart(sensitivity_chart(sens, REFERENCE_POINT, key_metric), key="sens_pr")
     st.caption("Línea vertical continua: peso actual. Líneas punteadas: valores de peso donde cambia la mejor alternativa.")
 
     # -- Verificación puntual ---------------------------------------------------
