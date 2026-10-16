@@ -86,27 +86,10 @@ def render() -> None:
     st.latex(r"v_{ij} = w_j \cdot x^*_{ij}")
     table(r.weighted_frame(), width="stretch")
 
-    # -- 4. Sistema de Razones ----------------------------------------------
-    st.subheader("Paso 4 · MOORA – Sistema de Razones")
-    st.latex(r"y_i = \sum_{j \in Max} w_j\, x^*_{ij} \;-\; \sum_{j \in Min} w_j\, x^*_{ij}"
-             r"\qquad \text{(mayor } y_i \text{ es mejor)}")
-    st.caption("Las columnas de criterios muestran el aporte con signo: positivo si es beneficio, negativo si es costo.")
-    table(r.ratio_frame(), highlight=_highlight_rank1, width="stretch")
-
-    # -- 5. Punto de referencia ---------------------------------------------
-    st.subheader("Paso 5 · Punto de referencia")
-    st.latex(r"r_j = \max_i x^*_{ij} \;\;(\text{beneficio}) \qquad r_j = \min_i x^*_{ij} \;\;(\text{costo})")
-    table(r.reference_frame(), width="stretch")
-
-    # -- 6. Desviaciones ----------------------------------------------------
-    st.subheader("Paso 6 · Matriz de desviaciones")
-    st.latex(r"\left| r_j - x^*_{ij} \right|")
-    table(r.deviations_frame(), width="stretch")
-
-    st.subheader("Paso 7 · Desviaciones ponderadas y métrica de Tchebycheff")
-    st.latex(r"d_i = \max_j \left\{ w_j \left| r_j - x^*_{ij} \right| \right\}"
-             r"\qquad \text{(menor } d_i \text{ es mejor)}")
-    st.caption("En cada fila se resalta el desvío máximo, que define d_i (criterio crítico de la alternativa).")
+    # -- 4. Los dos métodos, uno al lado del otro --------------------------
+    st.subheader("Paso 4 · Aplicación de los métodos MOORA")
+    st.caption("Ambos métodos parten de la matriz normalizada ponderada del paso 3. A la izquierda, el enfoque "
+               "compensatorio; a la derecha, el no compensatorio.")
     criteria = r.criteria
 
     def _highlight_dev(sty):
@@ -116,25 +99,53 @@ def render() -> None:
         )
         return _highlight_rank1(sty)
 
-    table(r.weighted_deviations_frame(), highlight=_highlight_dev, width="stretch")
+    def _pinned(*columns):
+        # Columnas fijas a la izquierda: en media pantalla el resultado queda visible sin desplazar.
+        return {c: st.column_config.Column(pinned=True) for c in columns}
 
-    # -- 8. Resultados finales ----------------------------------------------
+    left, right = st.columns(2, gap="medium")
+    with left.container(border=True):
+        st.markdown("#### Sistema de Razones")
+        st.caption("Compensatorio: suma los aportes de todos los criterios. **Mayor y_i es mejor.**")
+        st.latex(r"y_i = \sum_{j \in Max} w_j\, x^*_{ij} - \sum_{j \in Min} w_j\, x^*_{ij}")
+        st.markdown("**Aportes por criterio y valor global y_i**")
+        st.caption("Aporte con signo: positivo si el criterio es de beneficio, negativo si es de costo.")
+        table(r.ratio_frame(), highlight=_highlight_rank1, width="stretch", column_config=_pinned("y_i", "Posición"))
+
+    with right.container(border=True):
+        st.markdown("#### Punto de Referencia")
+        st.caption("No compensatorio: juzga a cada alternativa por su peor desvío respecto del ideal. "
+                   "**Menor d_i es mejor.**")
+        st.latex(r"r_j = \max_i x^*_{ij} \text{ (beneficio)}, \quad \min_i x^*_{ij} \text{ (costo)}")
+        st.markdown("**Punto de referencia r_j**")
+        table(r.reference_frame(), width="stretch")
+        st.latex(r"d_i = \max_j \left\{ w_j \left| r_j - x^*_{ij} \right| \right\}")
+        st.markdown("**Desviaciones ponderadas y d_i**")
+        st.caption("En cada fila se resalta el desvío máximo, que define d_i (criterio crítico).")
+        table(r.weighted_deviations_frame(), highlight=_highlight_dev, width="stretch",
+              column_config=_pinned("d_i", "Posición"))
+        with st.expander("Ver desviaciones sin ponderar |r_j − x*_ij|"):
+            table(r.deviations_frame(), width="stretch")
+
+    # -- Resultados finales: un ranking por método, del 1.º al último ---------
     st.subheader("Resultados finales")
-    final = r.results_frame()
-
-    def _highlight_final(sty):
-        return sty.apply(lambda col: [HIGHLIGHT if v == 1 else "" for v in col], subset=["Posición SR", "Posición PR"])
-
-    table(final, highlight=_highlight_final, width="stretch")
-
-    c1, c2 = st.columns(2)
+    st.caption("Cada tabla está ordenada según la posición en su método. La comparación detallada está en la "
+               "sección «4 · Comparación y gráficos».")
+    ratio_rank = pd.DataFrame(
+        {"Posición": r.ratio_ranks, "y_i": r.ratio_scores},
+        index=pd.Index(r.alternatives, name="Alternativa"),
+    ).sort_values(["Posición", "y_i"], ascending=[True, False])
+    reference_rank = pd.DataFrame(
+        {"Posición": r.reference_ranks, "d_i": r.reference_scores,
+         "Criterio crítico": [r.criteria[j] for j in r.critical_criteria]},
+        index=pd.Index(r.alternatives, name="Alternativa"),
+    ).sort_values(["Posición", "d_i"])
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
-        st.markdown("**Ranking – Sistema de Razones** (y_i descendente)")
-        st.dataframe(final.sort_values(["Posición SR", "y_i"], ascending=[True, False])[["Posición SR", "y_i"]]
-                     .style.format(precision=d), width="stretch")
+        st.markdown("**Sistema de Razones** (y_i de mayor a menor)")
+        table(ratio_rank, highlight=_highlight_rank1, width="stretch")
     with c2:
-        st.markdown("**Ranking – Punto de Referencia** (d_i ascendente)")
-        st.dataframe(final.sort_values(["Posición PR", "d_i"])[["Posición PR", "d_i"]].style.format(precision=d),
-                     width="stretch")
+        st.markdown("**Punto de Referencia** (d_i de menor a mayor)")
+        table(reference_rank, highlight=_highlight_rank1, width="stretch")
 
     nav_buttons(state.STEPS[2])

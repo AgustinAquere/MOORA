@@ -95,7 +95,7 @@ def render() -> None:
             chart(weights_bar(labels, w), key="weights_chart")
 
     if analysis.entropy is not None:
-        with st.expander("Pasos intermedios del método de entropía", expanded=p.weight_method == state.ENTROPY):
+        with st.expander("Pasos intermedios del método de entropía"):
             ent = analysis.entropy
             st.markdown("**Matriz de proporciones** $p_{ij} = x_{ij} / \\sum_i x_{ij}$")
             table(pd.DataFrame(ent.proportions, index=unique_labels(p.alternatives, "A"), columns=labels), width="stretch")
@@ -109,7 +109,7 @@ def render() -> None:
             )
 
     if analysis.critic is not None:
-        with st.expander("Pasos intermedios del método CRITIC", expanded=p.weight_method == state.CRITIC):
+        with st.expander("Pasos intermedios del método CRITIC"):
             cr = analysis.critic
             st.markdown("**Matriz normalizada** $r_{ij}$ (min-max según el sentido del criterio)")
             table(pd.DataFrame(cr.normalized, index=unique_labels(p.alternatives, "A"), columns=labels), width="stretch")
