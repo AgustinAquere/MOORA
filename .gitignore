@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .claude/
 .venv-wsl/
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 .vscode/
 .security-audit/

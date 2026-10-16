@@ -1,0 +1,52 @@
+# Se definen las variantes clara y oscura por separado: si solo hubiera una
+# sección [theme], Streamlit ocultaría el selector de tema del menú ⋮.
+# En [theme] van solo las opciones comunes a ambas variantes (tipografía y forma).
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
+baseFontSize = 15
+headingFontWeights = [700, 650, 600, 600, 600, 600]
+headingFontSizes = ["2.1rem", "1.55rem", "1.2rem"]
+metricValueFontSize = "1.9rem"
+metricValueFontWeight = 650
+baseRadius = "0.6rem"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.light]
+primaryColor = "#4054d6"
+backgroundColor = "#f6f7fb"
+secondaryBackgroundColor = "#eceff6"
+textColor = "#1d2433"
+linkColor = "#3346c4"
+borderColor = "#d9dde8"
+dataframeBorderColor = "#e2e5ee"
+dataframeHeaderBackgroundColor = "#e8ebf5"
+codeBackgroundColor = "#eceff6"
+
+[theme.light.sidebar]
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f1f3f9"
+borderColor = "#e1e4ee"
+
+[theme.dark]
+primaryColor = "#8b9cf7"
+backgroundColor = "#11151f"
+secondaryBackgroundColor = "#1b2130"
+textColor = "#e4e8f1"
+linkColor = "#a3b1fa"
+borderColor = "#2c3447"
+dataframeBorderColor = "#262e40"
+dataframeHeaderBackgroundColor = "#1f2638"
+codeBackgroundColor = "#1b2130"
+
+[theme.dark.sidebar]
+backgroundColor = "#0c0f17"
+secondaryBackgroundColor = "#171c29"
+borderColor = "#232a3a"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+maxUploadSize = 20

@@ -10,7 +10,7 @@ from data_io.validators import ValidationReport
 from .charts import PLOTLY_CONFIG
 from .state import STEPS, Analysis, go_to
 
-HIGHLIGHT = "background-color: rgba(42, 120, 214, 0.20); font-weight: 600;"
+HIGHLIGHT = "background-color: rgba(82, 102, 224, 0.22); font-weight: 600;"
 
 
 def md(text: str) -> str:
