@@ -42,7 +42,7 @@ python -m pytest
 |---|---|
 | 1 · Datos del problema | Ejemplos precargados, carga manual con dimensión m × n configurable (nombres de criterios y alternativas editables), importación desde Excel/CSV. |
 | 2 · Criterios y pesos | Nombre y sentido (Beneficio/Costo) de cada criterio; pesos por asignación directa (con normalización automática), iguales (1/n), entropía o CRITIC. |
-| 3 · Resultados paso a paso | Matriz original, normas, matriz normalizada, matriz ponderada, Sistema de Razones, punto de referencia, desviaciones, desviaciones ponderadas y resultados finales. |
+| 3 · Resultados paso a paso | Selección del método de normalización (vectorial por defecto, lineal, lineal basada en la suma o logarítmica), matriz original, divisores, matriz normalizada, matriz ponderada, Sistema de Razones, punto de referencia, desviaciones, desviaciones ponderadas y resultados finales. |
 | 4 · Comparación y gráficos | Tabla comparativa, Spearman, indicador de coincidencia, notas interpretativas (compensatorio vs. no compensatorio) y gráficos Plotly. |
 | 5 · Análisis de sensibilidad | Variación del peso de un criterio con renormalización proporcional; puntos de cambio de la mejor alternativa (refinados por bisección) e intervalos de estabilidad. |
 | 6 · Exportación | Libro Excel con una hoja por paso, ZIP con un CSV por tabla, CSV de resultados y el problema en formato reimportable. |

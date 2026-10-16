@@ -1,13 +1,21 @@
 """Núcleo de cálculo de MOORA (funciones puras, sin dependencias de la interfaz)."""
 
 from .moora import (
+    DIVISOR_LABELS,
+    LINEAR,
+    LINEAR_SUM,
+    LOGARITHMIC,
+    NORMALIZATION_METHODS,
     RATIO_SYSTEM,
     REFERENCE_POINT,
+    VECTOR,
     MooraResult,
     RankingComparison,
     ZeroNormColumnError,
     column_norms,
     compare_rankings,
+    normalization_divisors,
+    normalize,
     rank,
     ratio_system,
     reference_deviations,
@@ -33,8 +41,14 @@ from .weights import (
 )
 
 __all__ = [
+    "DIVISOR_LABELS",
+    "LINEAR",
+    "LINEAR_SUM",
+    "LOGARITHMIC",
+    "NORMALIZATION_METHODS",
     "RATIO_SYSTEM",
     "REFERENCE_POINT",
+    "VECTOR",
     "CriticResult",
     "EntropyResult",
     "MooraResult",
@@ -48,6 +62,8 @@ __all__ = [
     "entropy_analysis",
     "entropy_weights",
     "equal_weights",
+    "normalization_divisors",
+    "normalize",
     "normalize_weights",
     "rank",
     "ratio_system",

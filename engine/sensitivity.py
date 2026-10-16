@@ -20,12 +20,13 @@ import pandas as pd
 from .moora import (
     RATIO_SYSTEM,
     REFERENCE_POINT,
+    VECTOR,
     as_decision_matrix,
     as_direction_vector,
+    normalize,
     rank,
     reference_deviations,
     reference_point,
-    vector_normalize,
 )
 from .weights import normalize_weights
 
@@ -146,6 +147,7 @@ def sensitivity_analysis(
     steps: int = 101,
     alternatives=None,
     criteria=None,
+    normalization: str = VECTOR,
 ) -> SensitivityResult:
     """Recalcula ambos rankings variando el peso del criterio ``criterion_index``.
 
@@ -173,7 +175,7 @@ def sensitivity_analysis(
     alts = list(alternatives) if alternatives is not None else [f"A{i + 1}" for i in range(m)]
     crits = list(criteria) if criteria is not None else [f"C{j + 1}" for j in range(n)]
 
-    normalized = vector_normalize(x)
+    normalized = normalize(x, normalization)
     sign = np.where(benefit, 1.0, -1.0)
     deviations = reference_deviations(normalized, reference_point(normalized, benefit))
     base = float(w[criterion_index])
@@ -237,7 +239,8 @@ def sensitivity_analysis(
     )
 
 
-def stability_table(matrix, weights, is_benefit, criteria=None, alternatives=None, steps: int = 201) -> pd.DataFrame:
+def stability_table(matrix, weights, is_benefit, criteria=None, alternatives=None, steps: int = 201,
+                    normalization: str = VECTOR) -> pd.DataFrame:
     """Para cada criterio, intervalo de su peso en [0, 1] en el que la mejor
     alternativa actual de cada método no cambia. Cuanto más angosto el intervalo,
     más determinante es ese criterio para la decisión."""
@@ -247,7 +250,8 @@ def stability_table(matrix, weights, is_benefit, criteria=None, alternatives=Non
     rows = []
     for k in range(n):
         res = sensitivity_analysis(
-            x, weights, is_benefit, k, 0.0, 1.0, steps, alternatives=alternatives, criteria=crits
+            x, weights, is_benefit, k, 0.0, 1.0, steps, alternatives=alternatives, criteria=crits,
+            normalization=normalization,
         )
         row = {"Criterio": crits[k], "Peso actual": res.base_weight}
         for label, method in (("SR", RATIO_SYSTEM), ("PR", REFERENCE_POINT)):

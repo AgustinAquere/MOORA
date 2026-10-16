@@ -135,3 +135,14 @@ def test_sensitivity_invalid_arguments(proveedores, kwargs):
 def test_sensitivity_requires_two_criteria():
     with pytest.raises(ValueError):
         sensitivity_analysis([[1], [2]], [1.0], [True], 0)
+
+
+def test_sensitivity_uses_selected_normalization(proveedores):
+    from engine import LINEAR_SUM
+
+    p = proveedores
+    s = sensitivity_analysis(p["matrix"], p["weights"], p["is_benefit"], 1, steps=21, normalization=LINEAR_SUM)
+    base = solve(p["matrix"], p["weights"], p["is_benefit"], normalization=LINEAR_SUM)
+    g = int(np.argmin(np.abs(s.grid - s.base_weight)))
+    np.testing.assert_allclose(s.ratio_scores[g], base.ratio_scores)
+    np.testing.assert_allclose(s.reference_scores[g], base.reference_scores)

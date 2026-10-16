@@ -28,6 +28,8 @@ from data_io.validators import (
     validate_problem,
 )
 from engine import (
+    NORMALIZATION_METHODS,
+    VECTOR,
     CriticResult,
     EntropyResult,
     MooraResult,
@@ -50,6 +52,7 @@ STEPS = [
 
 DIRECT, EQUAL, ENTROPY, CRITIC = "Asignación directa", "Pesos iguales (1/n)", "Entropía (objetivo)", "CRITIC (objetivo)"
 WEIGHT_METHODS = (DIRECT, EQUAL, ENTROPY, CRITIC)
+NORMALIZATIONS = NORMALIZATION_METHODS
 
 ALT_COL = "Alternativa"
 
@@ -63,6 +66,7 @@ class Problem:
     directions: list[str]
     weights: list[float | None]  # pesos de la asignación directa
     weight_method: str = DIRECT
+    normalization: str = VECTOR
 
     @property
     def m(self) -> int:
@@ -113,6 +117,7 @@ def set_problem(p: Problem) -> None:
     ss["dim_m"] = max(p.m, 1)
     ss["dim_n"] = max(p.n, 1)
     ss["weight_method_input"] = p.weight_method
+    ss["normalization_input"] = p.normalization
     ss.pop("sensitivity_cfg", None)
     refresh_editors()
 
@@ -187,6 +192,7 @@ def resized(p: Problem, m: int, n: int) -> Problem:
         directions=p.directions[:n] + [BENEFIT] * max(0, n - p.n),
         weights=p.weights[:n] + [round(new_w, 6)] * max(0, n - p.n),
         weight_method=p.weight_method,
+        normalization=p.normalization,
     )
 
 
@@ -300,7 +306,8 @@ def analyze(p: Problem) -> Analysis:
     if analysis.inputs is None:
         return analysis
     try:
-        analysis.result = solve(inputs.matrix, inputs.weights, inputs.is_benefit, inputs.alternatives, inputs.criteria)
+        analysis.result = solve(inputs.matrix, inputs.weights, inputs.is_benefit, inputs.alternatives, inputs.criteria,
+                                normalization=p.normalization)
     except ValueError as exc:  # red de seguridad: la validación debería haberlo evitado
         report.errors.append(str(exc))
         return analysis

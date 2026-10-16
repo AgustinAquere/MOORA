@@ -229,13 +229,14 @@ def validate_matrix(values, alternatives, criteria) -> tuple[ValidationReport, n
     if zero_cols:
         report.errors.append(
             f"La suma de cuadrados es 0 en {_listing(zero_cols)}: todos los valores son 0 y la "
-            "normalización vectorial dividiría por cero. Corrija los datos o elimine el criterio."
+            "normalización dividiría por cero. Corrija los datos o elimine el criterio."
         )
     neg_cols = [criteria[j] for j in range(x.shape[1]) if np.any(x[:, j] < 0)]
     if neg_cols:
         report.warnings.append(
             f"Hay valores negativos en {_listing(neg_cols)}. La normalización vectorial los admite, pero "
-            "conviene verificar su interpretación; el método de entropía no puede usarse con ellos."
+            "conviene verificar su interpretación; el método de entropía y la normalización logarítmica "
+            "no pueden usarse con ellos."
         )
     if x.shape[0] > 1:
         const_cols = [

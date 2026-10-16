@@ -39,7 +39,8 @@ def render() -> None:
     st.header("2 · Criterios y pesos")
     st.caption("Asigne a cada criterio su nombre, su sentido (Beneficio = maximizar, Costo = minimizar) y su peso.")
 
-    ss.setdefault("weight_method_input", p.weight_method)
+    # Se sincroniza siempre desde el problema: Streamlit descarta el estado del widget al cambiar de paso.
+    ss["weight_method_input"] = p.weight_method
     st.radio("Método de asignación de pesos", state.WEIGHT_METHODS, key="weight_method_input",
              horizontal=True, on_change=_method_changed)
     st.markdown(METHOD_HELP[p.weight_method])

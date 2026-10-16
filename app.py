@@ -35,7 +35,8 @@ def sidebar_summary() -> None:
     with st.sidebar:
         st.divider()
         st.markdown(md(f"**{p.name or 'Problema sin nombre'}**"))
-        st.caption(f"{p.m} alternativas × {p.n} criterios · pesos: {p.weight_method.lower()}")
+        st.caption(f"{p.m} alternativas × {p.n} criterios · pesos: {p.weight_method.lower()} · "
+                   f"{p.normalization.lower()}")
         if analysis.ok:
             cmp = analysis.comparison
             st.markdown(md(f"🥇 SR: **{' / '.join(cmp.ratio_winners)}**  \n🥇 PR: **{' / '.join(cmp.reference_winners)}**"))

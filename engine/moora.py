@@ -3,7 +3,11 @@
 Notación (m alternativas, n criterios):
 
 * ``x_ij``  : matriz de decisión.
-* ``x*_ij`` : normalización vectorial ``x_ij / sqrt(sum_i x_ij^2)``.
+* ``x*_ij`` : matriz normalizada. Por defecto, normalización vectorial
+  ``x_ij / sqrt(sum_i x_ij^2)``; también lineal ``x_ij / max_i x_ij``, lineal
+  basada en la suma ``x_ij / sum_i x_ij`` y logarítmica ``ln x_ij / ln(prod_i x_ij)``.
+  Todas se aplican igual a beneficios y costos: el sentido se tiene en cuenta
+  al agregar (restando los costos o tomando el mínimo como referencia).
 * ``w_j``   : pesos (se normalizan para que sumen 1).
 * Sistema de Razones: ``y_i = sum_{j∈Max} w_j x*_ij - sum_{j∈Min} w_j x*_ij``
   (ranking de mayor a menor).
@@ -31,6 +35,20 @@ TIE_TOLERANCE = 1e-12
 
 RATIO_SYSTEM = "Sistema de Razones"
 REFERENCE_POINT = "Punto de Referencia"
+
+VECTOR = "Normalización vectorial"
+LINEAR = "Normalización lineal"
+LINEAR_SUM = "Normalización lineal basada en la suma"
+LOGARITHMIC = "Normalización logarítmica"
+NORMALIZATION_METHODS = (VECTOR, LINEAR, LINEAR_SUM, LOGARITHMIC)
+
+#: Rótulo del divisor de cada columna según el método de normalización.
+DIVISOR_LABELS = {
+    VECTOR: "Norma √Σx²",
+    LINEAR: "Máximo max x",
+    LINEAR_SUM: "Suma Σx",
+    LOGARITHMIC: "ln Πx = Σ ln x",
+}
 
 
 class ZeroNormColumnError(ValueError):
@@ -115,6 +133,61 @@ def vector_normalize(matrix) -> np.ndarray:
     if zero.size:
         raise ZeroNormColumnError(zero.tolist())
     return x / norms
+
+
+def _columns(indices) -> str:
+    return ", ".join(str(j + 1) for j in indices)
+
+
+def normalization_divisors(matrix, method: str = VECTOR) -> np.ndarray:
+    """Divisor de cada columna según el método de normalización.
+
+    * vectorial: ``sqrt(sum_i x_ij^2)``
+    * lineal: ``max_i x_ij``
+    * lineal basada en la suma: ``sum_i x_ij``
+    * logarítmica: ``ln(prod_i x_ij) = sum_i ln x_ij`` (requiere ``x_ij > 0``)
+    """
+    x = as_decision_matrix(matrix)
+    if method == VECTOR:
+        return np.sqrt((x ** 2).sum(axis=0))
+    if method == LINEAR:
+        return x.max(axis=0)
+    if method == LINEAR_SUM:
+        return x.sum(axis=0)
+    if method == LOGARITHMIC:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.log(x).sum(axis=0)
+    raise ValueError(f"Método de normalización desconocido: {method!r}.")
+
+
+def normalize(matrix, method: str = VECTOR) -> np.ndarray:
+    """Normaliza la matriz de decisión con el método indicado (por defecto, vectorial).
+
+    Raises:
+        ZeroNormColumnError: normalización vectorial con una columna de ceros.
+        ValueError: si los datos no admiten el método elegido.
+    """
+    x = as_decision_matrix(matrix)
+    if method == VECTOR:
+        return vector_normalize(x)
+    if method == LOGARITHMIC:
+        bad = np.flatnonzero(np.any(x <= 0, axis=0))
+        if bad.size:
+            raise ValueError(
+                f"La normalización logarítmica requiere valores mayores que 0 (columna(s) {_columns(bad)})."
+            )
+    divisors = normalization_divisors(x, method)
+    bad = np.flatnonzero(divisors <= 0)
+    if bad.size:
+        detail = {
+            LINEAR: "el máximo de la columna debe ser mayor que 0",
+            LINEAR_SUM: "la suma de la columna debe ser mayor que 0",
+            LOGARITHMIC: "el producto de los valores de la columna debe ser mayor que 1 (Σ ln x > 0)",
+        }[method]
+        raise ValueError(f"{method}: {detail} (columna(s) {_columns(bad)}).")
+    if method == LOGARITHMIC:
+        return np.log(x) / divisors
+    return x / divisors
 
 
 def weighted_normalized(normalized, weights) -> np.ndarray:
@@ -215,6 +288,7 @@ class MooraResult:
     weighted_deviations: np.ndarray
     reference_scores: np.ndarray
     reference_ranks: np.ndarray
+    normalization: str = VECTOR
 
     @property
     def m(self) -> int:
@@ -258,7 +332,7 @@ class MooraResult:
             {
                 "Sentido": self.directions,
                 "Peso": self.weights,
-                "Norma √Σx²": self.norms,
+                DIVISOR_LABELS[self.normalization]: self.norms,
             },
             index=pd.Index(self.criteria, name="Criterio"),
         )
@@ -312,7 +386,7 @@ class MooraResult:
         return df
 
 
-def solve(matrix, weights, is_benefit, alternatives=None, criteria=None) -> MooraResult:
+def solve(matrix, weights, is_benefit, alternatives=None, criteria=None, normalization: str = VECTOR) -> MooraResult:
     """Resuelve MOORA (Sistema de Razones y Punto de Referencia).
 
     Args:
@@ -321,6 +395,7 @@ def solve(matrix, weights, is_benefit, alternatives=None, criteria=None) -> Moor
         is_benefit: ``True`` para criterios de beneficio (Max), ``False`` para costo (Min).
         alternatives: nombres de las alternativas (opcional).
         criteria: nombres de los criterios (opcional).
+        normalization: método de normalización (uno de ``NORMALIZATION_METHODS``).
     """
     x = as_decision_matrix(matrix)
     m, n = x.shape
@@ -329,8 +404,8 @@ def solve(matrix, weights, is_benefit, alternatives=None, criteria=None) -> Moor
     alts = _labels(alternatives, m, "A")
     crits = _labels(criteria, n, "C")
 
-    norms = np.sqrt((x ** 2).sum(axis=0))
-    normalized = vector_normalize(x)
+    normalized = normalize(x, normalization)
+    norms = normalization_divisors(x, normalization)
     weighted = normalized * w
     y = (weighted * np.where(benefit, 1.0, -1.0)).sum(axis=1)
     r = reference_point(normalized, benefit)
@@ -354,6 +429,7 @@ def solve(matrix, weights, is_benefit, alternatives=None, criteria=None) -> Moor
         weighted_deviations=wdev,
         reference_scores=d,
         reference_ranks=rank(d, higher_is_better=False),
+        normalization=normalization,
     )
 
 

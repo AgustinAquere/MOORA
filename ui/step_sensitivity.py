@@ -17,7 +17,7 @@ def run_sensitivity(analysis: state.Analysis, cfg: dict):
     inp = analysis.inputs
     return sensitivity_analysis(
         inp.matrix, inp.weights, inp.is_benefit, cfg["criterion"], cfg["w_min"], cfg["w_max"], cfg["steps"],
-        alternatives=inp.alternatives, criteria=inp.criteria,
+        alternatives=inp.alternatives, criteria=inp.criteria, normalization=analysis.result.normalization,
     )
 
 
@@ -99,7 +99,7 @@ def render() -> None:
         t = st.number_input(md(f"Peso de «{r.criteria[k]}»"), 0.0, 1.0, float(r.weights[k]), step=0.01, format="%.4f",
                             key="sens_point")
         w_new = redistribute_weights(inp.weights, k, t)
-        res = solve(inp.matrix, w_new, inp.is_benefit, inp.alternatives, inp.criteria)
+        res = solve(inp.matrix, w_new, inp.is_benefit, inp.alternatives, inp.criteria, normalization=r.normalization)
         table(pd.DataFrame({"Peso original": inp.weights, "Peso recalculado": w_new},
                            index=pd.Index(inp.criteria, name="Criterio")).T, width="stretch")
         table(res.results_frame(), width="stretch")
@@ -110,7 +110,8 @@ def render() -> None:
             "Para cada criterio, intervalo de su peso en [0, 1] en el que la mejor alternativa actual no cambia "
             "(los demás pesos se renormalizan). Un intervalo angosto indica un criterio determinante."
         )
-        stab = stability_table(inp.matrix, inp.weights, inp.is_benefit, inp.criteria, inp.alternatives, steps=201)
+        stab = stability_table(inp.matrix, inp.weights, inp.is_benefit, inp.criteria, inp.alternatives, steps=201,
+                               normalization=r.normalization)
         table(stab, width="stretch")
 
     nav_buttons(state.STEPS[4])

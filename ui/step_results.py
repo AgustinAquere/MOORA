@@ -5,8 +5,28 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from engine import LINEAR, LINEAR_SUM, LOGARITHMIC, VECTOR
+
 from . import state
 from .components import HIGHLIGHT, decimals, nav_buttons, require_results, show_report, table
+
+NORMALIZATION_FORMULAS = {
+    VECTOR: r"x^*_{ij} = \frac{x_{ij}}{\sqrt{\sum_{i=1}^{m} x_{ij}^2}}",
+    LINEAR: r"x^*_{ij} = \frac{x_{ij}}{\max_i x_{ij}}",
+    LINEAR_SUM: r"x^*_{ij} = \frac{x_{ij}}{\sum_{i=1}^{m} x_{ij}}",
+    LOGARITHMIC: r"x^*_{ij} = \frac{\ln x_{ij}}{\ln \left( \prod_{i=1}^{m} x_{ij} \right)}",
+}
+
+DIVISOR_ROW = {
+    VECTOR: "√Σ x²ᵢⱼ",
+    LINEAR: "max xᵢⱼ",
+    LINEAR_SUM: "Σ xᵢⱼ",
+    LOGARITHMIC: "ln Π xᵢⱼ",
+}
+
+
+def _normalization_changed() -> None:
+    state.get_problem().normalization = st.session_state["normalization_input"]
 
 
 def _highlight_rank1(sty):
@@ -17,8 +37,15 @@ def _highlight_rank1(sty):
 
 def render() -> None:
     p = state.get_problem()
-    analysis = state.analyze(p)
+    ss = st.session_state
     st.header("3 · Resultados paso a paso")
+    # Se sincroniza siempre desde el problema: Streamlit descarta el estado del widget al cambiar de paso.
+    ss["normalization_input"] = p.normalization
+    st.selectbox("Método de normalización", state.NORMALIZATIONS, key="normalization_input",
+                 on_change=_normalization_changed,
+                 help="Por defecto se usa la normalización vectorial, la propia de MOORA. El método elegido se "
+                      "aplica también a la comparación, la sensibilidad y la exportación.")
+    analysis = state.analyze(p)
     if not require_results(analysis):
         nav_buttons(state.STEPS[2])
         return
@@ -46,9 +73,11 @@ def render() -> None:
     st.dataframe(meta, width="stretch")
 
     # -- 2. Normalización ---------------------------------------------------
-    st.subheader("Paso 2 · Normalización vectorial")
-    st.latex(r"x^*_{ij} = \frac{x_{ij}}{\sqrt{\sum_{i=1}^{m} x_{ij}^2}}")
-    norms = pd.DataFrame([r.norms], index=pd.Index(["√Σ x²ᵢⱼ"], name=""), columns=r.criteria)
+    st.subheader(f"Paso 2 · {r.normalization}")
+    st.latex(NORMALIZATION_FORMULAS[r.normalization])
+    st.caption("La misma fórmula se aplica a criterios de beneficio y de costo: el sentido se considera al agregar "
+               "(los costos restan en el Sistema de Razones y toman el mínimo como referencia).")
+    norms = pd.DataFrame([r.norms], index=pd.Index([DIVISOR_ROW[r.normalization]], name=""), columns=r.criteria)
     table(norms, width="stretch")
     table(r.normalized_frame(), width="stretch")
 

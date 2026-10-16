@@ -275,6 +275,7 @@ def result_sheets(result, comparison=None, sensitivity=None, entropy=None, probl
         sheets["Comparacion"] = comp
         summary = {
             "Problema": problem_name or "-",
+            "Normalización": result.normalization,
             "Mejor (Sistema de Razones)": " / ".join(comparison.ratio_winners),
             "Mejor (Punto de Referencia)": " / ".join(comparison.reference_winners),
             "Coincide la mejor alternativa": "Sí" if comparison.winners_match else "No",

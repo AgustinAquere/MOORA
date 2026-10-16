@@ -2,6 +2,14 @@ import numpy as np
 import pytest
 
 from engine import (
+    DIVISOR_LABELS,
+    LINEAR,
+    LINEAR_SUM,
+    LOGARITHMIC,
+    NORMALIZATION_METHODS,
+    VECTOR,
+    normalization_divisors,
+    normalize,
     ZeroNormColumnError,
     column_norms,
     compare_rankings,
@@ -240,3 +248,58 @@ def test_comparison_when_methods_agree():
     assert cmp.winners_match
     assert cmp.ratio_winners == cmp.reference_winners == ["X"]
     assert any("Ambos métodos eligen" in note for note in cmp.notes)
+
+
+# ---------------------------------------------------------------------------
+# Otros métodos de normalización
+# ---------------------------------------------------------------------------
+
+def test_linear_normalizations_hand_computed():
+    x = [[2, 1], [4, 3]]
+    np.testing.assert_allclose(normalize(x, LINEAR), [[0.5, 1 / 3], [1.0, 1.0]])
+    np.testing.assert_allclose(normalize(x, LINEAR_SUM), [[1 / 3, 0.25], [2 / 3, 0.75]])
+    np.testing.assert_allclose(normalization_divisors(x, LINEAR), [4, 3])
+    np.testing.assert_allclose(normalization_divisors(x, LINEAR_SUM), [6, 4])
+
+
+def test_logarithmic_normalization_hand_computed():
+    x = np.array([[np.e, 10], [np.e ** 3, 100]])
+    np.testing.assert_allclose(normalize(x, LOGARITHMIC), [[0.25, 1 / 3], [0.75, 2 / 3]])
+    assert normalize(x, LOGARITHMIC).sum(axis=0) == pytest.approx([1, 1])
+
+
+def test_vector_is_the_default_normalization(proveedores):
+    p = proveedores
+    res = solve(p["matrix"], p["weights"], p["is_benefit"])
+    assert res.normalization == VECTOR
+    np.testing.assert_allclose(res.normalized, vector_normalize(p["matrix"]))
+
+
+@pytest.mark.parametrize("method", NORMALIZATION_METHODS)
+def test_solve_with_each_normalization(proveedores, method):
+    p = proveedores
+    res = solve(p["matrix"], p["weights"], p["is_benefit"], normalization=method)
+    assert res.normalization == method
+    np.testing.assert_allclose(res.normalized, normalize(p["matrix"], method))
+    assert sorted(res.ratio_ranks) == [1, 2, 3, 4]
+    assert DIVISOR_LABELS[method] in res.criteria_frame().columns
+
+
+@pytest.mark.parametrize(
+    "matrix, method",
+    [
+        ([[0, 1], [0, 2]], LINEAR),
+        ([[-1, 1], [-2, 2]], LINEAR),
+        ([[1, -1], [2, -2]], LINEAR_SUM),
+        ([[0, 2], [3, 4]], LOGARITHMIC),
+        ([[0.5, 2], [0.5, 4]], LOGARITHMIC),  # Σ ln x < 0
+    ],
+)
+def test_normalization_rejects_invalid_data(matrix, method):
+    with pytest.raises(ValueError):
+        normalize(matrix, method)
+
+
+def test_unknown_normalization_is_rejected():
+    with pytest.raises(ValueError):
+        normalize([[1, 2]], "otra")
