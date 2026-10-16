@@ -20,6 +20,11 @@ METHOD_HELP = {
                    r"alternativas. $p_{ij} = x_{ij}/\sum_i x_{ij}$, "
                    r"$E_j = -\frac{1}{\ln m}\sum_i p_{ij}\ln p_{ij}$, "
                    r"$w_j = \frac{1-E_j}{\sum_k (1-E_k)}$.",
+    state.CRITIC: "Método objetivo (Diakoulaki et al., 1995): un criterio pesa más cuanto mayor es su contraste "
+                  "(desvío estándar) y su conflicto (baja correlación) con los demás. "
+                  r"$r_{ij} = \frac{x_{ij}-x_j^{\min}}{x_j^{\max}-x_j^{\min}}$ (beneficio) o "
+                  r"$r_{ij} = \frac{x_j^{\max}-x_{ij}}{x_j^{\max}-x_j^{\min}}$ (costo), "
+                  r"$C_j = \sigma_j \sum_k (1-\rho_{jk})$, $w_j = C_j / \sum_k C_k$.",
 }
 
 
@@ -70,7 +75,7 @@ def render() -> None:
         st.metric("Suma de los pesos ingresados", f"{sum(valid):.4f}")
     for msg in analysis.weight_messages:
         st.info(msg, icon="ℹ️")
-    entropy_errors = [e for e in analysis.report.errors if e.startswith("Método de entropía")]
+    entropy_errors = [e for e in analysis.report.errors if e.startswith(("Método de entropía", "Método CRITIC"))]
     report.errors.extend(entropy_errors)
     show_report(report)
 
@@ -101,5 +106,23 @@ def render() -> None:
                 ),
                 width="stretch",
             )
+
+    if analysis.critic is not None:
+        with st.expander("Pasos intermedios del método CRITIC", expanded=p.weight_method == state.CRITIC):
+            cr = analysis.critic
+            st.markdown("**Matriz normalizada** $r_{ij}$ (min-max según el sentido del criterio)")
+            table(pd.DataFrame(cr.normalized, index=unique_labels(p.alternatives, "A"), columns=labels), width="stretch")
+            st.markdown(r"**Matriz de correlación** $\rho_{jk}$ (Pearson)")
+            table(pd.DataFrame(cr.correlation, index=labels, columns=labels), width="stretch")
+            st.markdown("**Contraste, conflicto, información y pesos**")
+            table(
+                pd.DataFrame(
+                    {"σ_j (desvío)": cr.std, "Σ (1 − ρ_jk)": cr.conflict, "C_j": cr.information, "w_j": cr.weights},
+                    index=pd.Index(labels, name="Criterio"),
+                ),
+                width="stretch",
+            )
+            st.caption("σ_j es el desvío estándar muestral de la columna normalizada. "
+                       "Un criterio constante tiene σ_j = 0 y recibe peso 0.")
 
     nav_buttons(state.STEPS[1])

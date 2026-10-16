@@ -242,7 +242,7 @@ def problem_to_csv(alternatives, criteria, values, directions, weights, sep: str
     return frame.to_csv(index=False, sep=sep, decimal=decimal).encode("utf-8-sig")
 
 
-def result_sheets(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "") -> dict[str, pd.DataFrame]:
+def result_sheets(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "", critic=None) -> dict[str, pd.DataFrame]:
     """Tablas de todos los pasos intermedios y resultados, listas para exportar."""
     sheets: dict[str, pd.DataFrame] = {}
     sheets["Problema"] = problem_frame(
@@ -253,6 +253,14 @@ def result_sheets(result, comparison=None, sensitivity=None, entropy=None, probl
         sheets["Pesos entropia"] = pd.DataFrame(
             {"E_j (entropía)": entropy.entropy, "d_j = 1 - E_j": entropy.divergence, "w_j": entropy.weights},
             index=pd.Index(result.criteria, name="Criterio"),
+        )
+    if critic is not None:
+        sheets["Pesos CRITIC"] = pd.DataFrame(
+            {"sigma_j": critic.std, "Suma (1 - rho_jk)": critic.conflict, "C_j": critic.information, "w_j": critic.weights},
+            index=pd.Index(result.criteria, name="Criterio"),
+        )
+        sheets["Correlacion CRITIC"] = pd.DataFrame(
+            critic.correlation, index=pd.Index(result.criteria, name="Criterio"), columns=result.criteria
         )
     sheets["Normalizada"] = result.normalized_frame()
     sheets["Ponderada"] = result.weighted_frame()
@@ -287,16 +295,16 @@ def result_sheets(result, comparison=None, sensitivity=None, entropy=None, probl
 _NO_INDEX = {"Sensibilidad", "Sensibilidad detalle", "Puntos de cambio"}
 
 
-def results_to_excel(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "") -> bytes:
+def results_to_excel(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "", critic=None) -> bytes:
     """Libro Excel con una hoja por paso intermedio."""
-    sheets = result_sheets(result, comparison, sensitivity, entropy, problem_name)
+    sheets = result_sheets(result, comparison, sensitivity, entropy, problem_name, critic)
     return _write_sheets(sheets, {k: k not in _NO_INDEX for k in sheets})
 
 
 def results_to_csv_zip(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "",
-                       sep: str = ",", decimal: str = ".") -> bytes:
+                       sep: str = ",", decimal: str = ".", critic=None) -> bytes:
     """ZIP con un CSV por tabla."""
-    sheets = result_sheets(result, comparison, sensitivity, entropy, problem_name)
+    sheets = result_sheets(result, comparison, sensitivity, entropy, problem_name, critic)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for i, (name, frame) in enumerate(sheets.items(), start=1):

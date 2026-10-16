@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from engine import entropy_analysis, entropy_weights, equal_weights, normalize_weights, weights_sum_to_one
+from engine import critic_analysis, critic_weights, entropy_analysis, entropy_weights, equal_weights, normalize_weights, weights_sum_to_one
 
 
 def test_normalize_weights_divides_by_sum():
@@ -74,3 +74,36 @@ def test_entropy_handles_zero_cells():
 def test_entropy_rejects_invalid_matrices(matrix):
     with pytest.raises(ValueError):
         entropy_weights(matrix)
+
+
+def test_critic_hand_computed():
+    # r (beneficio, beneficio, costo) = [[0,0,1],[0.5,1,0.5],[1,0.5,0]].
+    res = critic_analysis([[1, 10, 5], [2, 30, 6], [3, 20, 7]], [True, True, False])
+    np.testing.assert_allclose(res.normalized, [[0, 0, 1], [0.5, 1, 0.5], [1, 0.5, 0]])
+    np.testing.assert_allclose(res.std, [0.5, 0.5, 0.5])
+    np.testing.assert_allclose(res.correlation[0], [1, 0.5, -1])
+    np.testing.assert_allclose(res.conflict, [2.5, 2.0, 3.5])
+    np.testing.assert_allclose(res.weights, np.array([2.5, 2.0, 3.5]) / 8.0)
+
+
+def test_critic_weights_properties(robots):
+    w = critic_weights(robots["matrix"], robots["is_benefit"])
+    assert w.shape == (robots["matrix"].shape[1],)
+    assert np.all(w >= 0)
+    assert w.sum() == pytest.approx(1.0)
+    # Invariante ante cambios de escala y traslación de una columna.
+    shifted = robots["matrix"].copy()
+    shifted[:, 0] = shifted[:, 0] * 7 + 3
+    np.testing.assert_allclose(critic_weights(shifted, robots["is_benefit"]), w)
+
+
+def test_critic_constant_criterion_gets_zero_weight():
+    w = critic_weights([[5, 1, 3], [5, 2, 1], [5, 4, 2]], [True, True, False])
+    assert w[0] == 0
+    assert w.sum() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("matrix", [[[1, 2]], [[3, 3], [3, 3]], [[1, np.nan], [2, 3]]])
+def test_critic_rejects_invalid_matrices(matrix):
+    with pytest.raises(ValueError):
+        critic_weights(matrix, [True, True])

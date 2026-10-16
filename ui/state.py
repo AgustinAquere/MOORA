@@ -23,14 +23,17 @@ from data_io.validators import (
     ValidationReport,
     is_blank,
     unique_labels,
+    validate_directions,
     validate_matrix,
     validate_problem,
 )
 from engine import (
+    CriticResult,
     EntropyResult,
     MooraResult,
     RankingComparison,
     compare_rankings,
+    critic_analysis,
     entropy_analysis,
     equal_weights,
     solve,
@@ -45,8 +48,8 @@ STEPS = [
     "6 · Exportación",
 ]
 
-DIRECT, EQUAL, ENTROPY = "Asignación directa", "Pesos iguales (1/n)", "Entropía (objetivo)"
-WEIGHT_METHODS = (DIRECT, EQUAL, ENTROPY)
+DIRECT, EQUAL, ENTROPY, CRITIC = "Asignación directa", "Pesos iguales (1/n)", "Entropía (objetivo)", "CRITIC (objetivo)"
+WEIGHT_METHODS = (DIRECT, EQUAL, ENTROPY, CRITIC)
 
 ALT_COL = "Alternativa"
 
@@ -75,6 +78,7 @@ class Analysis:
     report: ValidationReport
     weights_used: np.ndarray | None = None
     entropy: EntropyResult | None = None
+    critic: CriticResult | None = None
     inputs: ProblemInputs | None = None
     result: MooraResult | None = None
     comparison: RankingComparison | None = None
@@ -271,6 +275,21 @@ def analyze(p: Problem) -> Analysis:
                 weights = analysis.entropy.weights.tolist()
             except ValueError as exc:
                 report.errors.append(f"Método de entropía: {exc}")
+                weights = equal_weights(p.n).tolist()
+    elif p.weight_method == CRITIC and p.n >= 1:
+        _, x = validate_matrix(p.values, labels_a, labels_c)
+        _, is_benefit = validate_directions(p.directions, labels_c)
+        if x is None or is_benefit is None:
+            weights = equal_weights(p.n).tolist()  # los errores de la matriz/sentidos ya se informan abajo
+            analysis.weight_messages.append(
+                "Los pesos por CRITIC se calcularán cuando la matriz y los sentidos de los criterios sean válidos."
+            )
+        else:
+            try:
+                analysis.critic = critic_analysis(x, is_benefit)
+                weights = analysis.critic.weights.tolist()
+            except ValueError as exc:
+                report.errors.append(f"Método CRITIC: {exc}")
                 weights = equal_weights(p.n).tolist()
 
     val_report, inputs = validate_problem(p.alternatives, p.criteria, p.values, p.directions, weights)

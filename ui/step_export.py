@@ -58,18 +58,18 @@ def render() -> None:
     sep, dec = (",", ".") if sep_label.startswith("Coma") else (";", ",")
     base = _slug(p.name)
 
-    sheets = result_sheets(r, cmp, sens, analysis.entropy, p.name)
+    sheets = result_sheets(r, cmp, sens, analysis.entropy, p.name, analysis.critic)
     c2.markdown("**El libro Excel incluye las hojas:**")
     c2.markdown(" · ".join(sheets))
 
     st.subheader("Resultados completos")
     b1, b2, b3 = st.columns(3)
     b1.download_button(
-        "Excel con todos los pasos", results_to_excel(r, cmp, sens, analysis.entropy, p.name),
+        "Excel con todos los pasos", results_to_excel(r, cmp, sens, analysis.entropy, p.name, analysis.critic),
         f"{base}_resultados.xlsx", EXCEL_MIME, type="primary", icon="📊", on_click="ignore", width="stretch",
     )
     b2.download_button(
-        "ZIP con un CSV por tabla", results_to_csv_zip(r, cmp, sens, analysis.entropy, p.name, sep=sep, decimal=dec),
+        "ZIP con un CSV por tabla", results_to_csv_zip(r, cmp, sens, analysis.entropy, p.name, sep=sep, decimal=dec, critic=analysis.critic),
         f"{base}_resultados_csv.zip", "application/zip", icon="🗂️", on_click="ignore", width="stretch",
     )
     b3.download_button(

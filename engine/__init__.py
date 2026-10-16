@@ -21,7 +21,10 @@ from .moora import (
 )
 from .sensitivity import SensitivityResult, redistribute_weights, sensitivity_analysis, stability_table
 from .weights import (
+    CriticResult,
     EntropyResult,
+    critic_analysis,
+    critic_weights,
     entropy_analysis,
     entropy_weights,
     equal_weights,
@@ -32,6 +35,7 @@ from .weights import (
 __all__ = [
     "RATIO_SYSTEM",
     "REFERENCE_POINT",
+    "CriticResult",
     "EntropyResult",
     "MooraResult",
     "RankingComparison",
@@ -39,6 +43,8 @@ __all__ = [
     "ZeroNormColumnError",
     "column_norms",
     "compare_rankings",
+    "critic_analysis",
+    "critic_weights",
     "entropy_analysis",
     "entropy_weights",
     "equal_weights",

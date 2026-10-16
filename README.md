@@ -41,7 +41,7 @@ python -m pytest
 | Paso | Contenido |
 |---|---|
 | 1 · Datos del problema | Ejemplos precargados, carga manual con dimensión m × n configurable (nombres de criterios y alternativas editables), importación desde Excel/CSV. |
-| 2 · Criterios y pesos | Nombre y sentido (Beneficio/Costo) de cada criterio; pesos por asignación directa (con normalización automática), iguales (1/n) o entropía. |
+| 2 · Criterios y pesos | Nombre y sentido (Beneficio/Costo) de cada criterio; pesos por asignación directa (con normalización automática), iguales (1/n), entropía o CRITIC. |
 | 3 · Resultados paso a paso | Matriz original, normas, matriz normalizada, matriz ponderada, Sistema de Razones, punto de referencia, desviaciones, desviaciones ponderadas y resultados finales. |
 | 4 · Comparación y gráficos | Tabla comparativa, Spearman, indicador de coincidencia, notas interpretativas (compensatorio vs. no compensatorio) y gráficos Plotly. |
 | 5 · Análisis de sensibilidad | Variación del peso de un criterio con renormalización proporcional; puntos de cambio de la mejor alternativa (refinados por bisección) e intervalos de estabilidad. |
@@ -56,7 +56,7 @@ MOORA/
 ├─ app.py                  # Punto de entrada de Streamlit (navegación y resumen lateral)
 ├─ engine/                 # Núcleo de cálculo: funciones puras, sin dependencias de la interfaz
 │   ├─ moora.py            # Normalización, Sistema de Razones, Punto de Referencia, rankings, Spearman, comparación
-│   ├─ weights.py          # Normalización de pesos, pesos iguales, entropía de Shannon
+│   ├─ weights.py          # Normalización de pesos, pesos iguales, entropía de Shannon, CRITIC
 │   └─ sensitivity.py      # Redistribución de pesos, análisis de sensibilidad, puntos de cambio, estabilidad
 ├─ data_io/                # Entrada/salida (no se llama «io» para no ocultar el módulo io de Python)
 │   ├─ validators.py       # Validación de matriz, nombres, sentidos y pesos con mensajes en español
