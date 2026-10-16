@@ -14,15 +14,15 @@ from __future__ import annotations
 CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#7a6fd6", "#e34948"]
 MAX_SERIES = len(CATEGORICAL)
 
-ACCENT = CATEGORICAL[0]  # barra destacada (mejor alternativa)
-NEUTRAL = "#a3a19a"  # barras no destacadas, grupo «Otros»
-MUTED = "#898781"  # líneas de referencia y marcadores neutros
+ACCENT = "#5266e0"  # barra destacada (mejor alternativa); índigo del color primario del tema
+NEUTRAL = "#9ba2b4"  # barras no destacadas, grupo «Otros»
+MUTED = "#868da0"  # líneas de referencia y marcadores neutros
 LABEL_BG = "rgba(128, 128, 128, 0.18)"  # fondo semitransparente para etiquetas sobre el gráfico
 
-# Escala secuencial por opacidad del azul: cerca de 0 se funde con el fondo (claro u oscuro).
-SEQUENTIAL = [[0.0, "rgba(42, 120, 214, 0.04)"], [1.0, "rgba(42, 120, 214, 1.0)"]]
+# Escala secuencial por opacidad del índigo: cerca de 0 se funde con el fondo (claro u oscuro).
+SEQUENTIAL = [[0.0, "rgba(82, 102, 224, 0.04)"], [1.0, "rgba(82, 102, 224, 1.0)"]]
 
-FONT_FAMILY = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+FONT_FAMILY = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
 
 
 def series_colors(names: list[str]) -> dict[str, str]:
