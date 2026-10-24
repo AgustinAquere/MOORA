@@ -15,6 +15,7 @@ from data_io.serializers import (
     results_to_csv_zip,
     results_to_excel,
 )
+from data_io.validators import unique_labels
 
 from . import state
 from .components import md, nav_buttons, require_results
@@ -79,7 +80,8 @@ def render() -> None:
 
     st.subheader("Matriz de datos del problema")
     st.caption("En el formato de importación del paso 1 (incluye filas Sentido y Peso), para retomar el problema más tarde.")
-    args = (r.alternatives, r.criteria, r.matrix, r.directions, r.weights)
+    # Nombres sin la unidad, para que el archivo se pueda volver a importar tal cual.
+    args = (r.alternatives, unique_labels(p.criteria, "C"), r.matrix, r.directions, r.weights)
     b1, b2, _ = st.columns(3)
     b1.download_button("Problema (Excel)", problem_to_excel(*args), f"{base}_problema.xlsx", EXCEL_MIME,
                        icon="📥", on_click="ignore", width="stretch")
