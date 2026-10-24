@@ -11,7 +11,18 @@ import plotly.graph_objects as go
 
 from engine import RATIO_SYSTEM, REFERENCE_POINT, MooraResult, SensitivityResult
 
-from .theme import ACCENT, CATEGORICAL, FONT_FAMILY, LABEL_BG, MAX_SERIES, MUTED, NEUTRAL, SEQUENTIAL, series_colors
+from .theme import (
+    ACCENT,
+    CATEGORICAL,
+    FONT_FAMILY,
+    LABEL_BG,
+    MAX_SERIES,
+    MUTED,
+    NEUTRAL,
+    SEQUENTIAL,
+    SUCCESS,
+    series_colors,
+)
 
 PLOTLY_CONFIG = {
     "displaylogo": False,
@@ -198,48 +209,113 @@ def deviation_heatmap(result: MooraResult, decimals: int = 4) -> go.Figure:
 # Sensibilidad
 # ---------------------------------------------------------------------------
 
-def sensitivity_chart(sens: SensitivityResult, method: str, metric: str) -> go.Figure:
-    """Puntaje o posición de cada alternativa en función del peso del criterio analizado.
+def _method_ranks(sens: SensitivityResult, method: str) -> np.ndarray:
+    return sens.ratio_ranks if method == RATIO_SYSTEM else sens.reference_ranks
 
-    metric: "score" o "rank".
+
+def _weight_markers(fig: go.Figure, base: float, point: float) -> None:
+    """Línea del peso original (continua) y del peso simulado (verde, a trazos)."""
+    fig.add_vline(x=base, line=dict(color=MUTED, width=1.5))
+    fig.add_annotation(x=base, y=1.0, yref="paper", text=f"original {base:.3f}", showarrow=False,
+                       yanchor="bottom", xanchor="right" if point >= base else "left",
+                       xshift=-4 if point >= base else 4, font=dict(size=11), bgcolor=LABEL_BG)
+    fig.add_vline(x=point, line=dict(color=SUCCESS, width=2, dash="dash"))
+    fig.add_annotation(x=point, y=1.0, yref="paper", text=f"<b>simulado {point:.3f}</b>", showarrow=False,
+                       yanchor="bottom", xanchor="left" if point >= base else "right",
+                       xshift=4 if point >= base else -4, font=dict(size=11, color=SUCCESS), bgcolor=LABEL_BG)
+
+
+def stability_line_chart(sens: SensitivityResult, method: str, point: float, relative: bool = False) -> go.Figure:
+    """Puntaje de cada alternativa en función del peso del criterio, con un marcador en cada
+    cruce en el que otra alternativa pasa al 1° lugar.
+
+    relative: resta a cada puntaje el promedio de las alternativas para ese mismo peso. Quita la
+    tendencia común a todas (que aplasta las líneas) sin mover los cruces: restar el mismo valor
+    a todas no cambia el orden, y en SR las líneas siguen siendo rectas.
     """
     colors = series_colors(sens.alternatives)
     if method == RATIO_SYSTEM:
-        scores, ranks, label = sens.ratio_scores, sens.ratio_ranks, "y_i"
+        scores, symbol, sense = sens.ratio_scores, "yᵢ", "mayor es mejor"
+        title = "Puntaje MOORA yᵢ"
     else:
-        scores, ranks, label = sens.reference_scores, sens.reference_ranks, "d_i"
-    values = scores if metric == "score" else ranks
+        scores, symbol, sense = sens.reference_scores, "dᵢ", "menor es mejor"
+        title = "Distancia dᵢ"
+    values = scores - scores.mean(axis=1, keepdims=True) if relative else scores
+    title = f"{symbol} − promedio ({sense})" if relative else f"{title} ({sense})"
     fig = go.Figure()
+    if relative:
+        fig.add_hline(y=0, line=dict(color=MUTED, width=1, dash="dot"))
+        fig.add_annotation(x=1.0, xref="paper", y=0, text="promedio", showarrow=False, xanchor="right",
+                           yanchor="bottom", font=dict(size=11, color=MUTED))
     for i, name in enumerate(sens.alternatives):
         fig.add_trace(
             go.Scatter(
-                x=sens.grid,
-                y=values[:, i],
-                mode="lines",
-                name=name,
-                line=dict(color=colors[name], width=2, shape="hv" if metric == "rank" else "linear"),
-                hovertemplate=(f"{name}: %{{y:.4f}}<extra></extra>" if metric == "score"
-                               else f"{name}: %{{y}}°<extra></extra>"),
+                x=sens.grid, y=values[:, i], mode="lines", name=name,
+                line=dict(color=colors[name], width=2.5), customdata=scores[:, i],
+                hovertemplate=(f"{name}: %{{y:+.4f}}  ({symbol} = %{{customdata:.4f}})<extra></extra>" if relative
+                               else f"{name}: %{{y:.4f}}<extra></extra>"),
             )
         )
-    # Peso actual.
-    fig.add_vline(x=sens.base_weight, line=dict(color=MUTED, width=1.5))
-    fig.add_annotation(x=sens.base_weight, y=1.0, yref="paper", text=f"peso actual {sens.base_weight:.3f}",
-                       showarrow=False, yanchor="top", xanchor="left", xshift=4,
-                       font=dict(size=11), bgcolor=LABEL_BG)
-    # Puntos de cambio de la mejor alternativa.
+    _weight_markers(fig, sens.base_weight, point)
+    # Cruces: el puntaje se interpola sobre la grilla (en SR es exacto porque yᵢ es lineal en el peso).
     cps = sens.change_points[sens.change_points["Método"] == method]
-    for k, (w, before, after) in enumerate(zip(cps["Peso"], cps["Mejor antes"], cps["Mejor después"])):
-        fig.add_vline(x=w, line=dict(color=MUTED, width=1, dash="dot"))
-        fig.add_annotation(
-            x=w, y=0.0 if k % 2 == 0 else 0.1, yref="paper", yanchor="bottom",
-            text=f"{w:.3f}: {before} → {after}", showarrow=False, xanchor="left", xshift=4,
-            font=dict(size=11), bgcolor=LABEL_BG,
+    for c, (w, after) in enumerate(zip(cps["Peso"], cps["Mejor después"])):
+        i = sens.alternatives.index(after.split(" / ")[0])
+        y = float(np.interp(w, sens.grid, values[:, i]))
+        fig.add_trace(
+            go.Scatter(
+                x=[w], y=[y], mode="markers", showlegend=False,
+                marker=dict(size=11, color="#ffffff", line=dict(color=MUTED, width=2.5)),
+                hovertemplate=f"Cruce en w = {w:.4f}<br>{after} pasa al 1° lugar<extra></extra>",
+            )
         )
-    fig.update_xaxes(title_text=f"Peso de «{sens.criterion}»", range=[sens.grid[0], sens.grid[-1]])
-    if metric == "rank":
-        fig.update_yaxes(autorange="reversed", dtick=1, title_text="Posición")
-    else:
-        fig.update_yaxes(title_text=label + (" (mayor es mejor)" if method == RATIO_SYSTEM else " (menor es mejor)"))
+        # Etiqueta separada del punto con una flecha corta (alternando abajo / arriba si hay varios cruces).
+        fig.add_annotation(x=w, y=y, text=f"Cruce en {w:.3f}: {after} pasa al 1° lugar", showarrow=True,
+                           arrowhead=0, arrowwidth=1, arrowcolor=MUTED, ax=0, ay=56 if c % 2 == 0 else -56,
+                           font=dict(size=11), bgcolor=LABEL_BG, borderpad=3)
+    fig.update_xaxes(title_text=f"Peso de «{sens.criterion}» (0 a 1)", range=[sens.grid[0], sens.grid[-1]],
+                     dtick=0.1, tickformat=".2f")
+    fig.update_yaxes(title_text=title, tickformat="+.2f" if relative else ".2f", zeroline=False)
     fig.update_layout(hovermode="x unified")
-    return _base(fig, 420, legend=True)
+    fig = _base(fig, 440, legend=True)
+    # Leyenda por encima de las etiquetas «original» / «simulado».
+    fig.update_layout(margin=dict(t=80), legend=dict(y=1.13))
+    return fig
+
+
+def rank_heatmap(sens: SensitivityResult, method: str, point: float) -> go.Figure:
+    """Mapa de calor de la posición de cada alternativa (filas) para cada peso (columnas).
+    Cuanto más intenso el color, mejor la posición."""
+    ranks = _method_ranks(sens, method).T
+    m = len(sens.alternatives)
+    top = max(m, 2)
+    # El 1° en índigo pleno; del 2° al último, de tenue a casi transparente (el texto gris se lee en ambos temas).
+    cut = 0.5 / (top - 1)
+    colorscale = [[0.0, "rgba(82, 102, 224, 1.0)"], [cut, "rgba(82, 102, 224, 1.0)"],
+                  [cut + 1e-9, "rgba(82, 102, 224, 0.32)"], [1.0, "rgba(82, 102, 224, 0.05)"]]
+    fig = go.Figure(
+        go.Heatmap(
+            z=ranks, x=sens.grid, y=sens.alternatives, colorscale=colorscale,
+            zmin=1, zmax=top, xgap=2, ygap=2, showscale=False,
+            hovertemplate="Peso: %{x:.3f}<br>%{y}: %{z}°<extra></extra>",
+        )
+    )
+    # Texto aparte: blanco sobre el 1°, color del tema (claro u oscuro) sobre el resto.
+    ii, gg = np.indices(ranks.shape)
+    for strong in (True, False):
+        mask = (ranks == 1) if strong else (ranks != 1)
+        fig.add_trace(
+            go.Scatter(
+                x=sens.grid[gg[mask]], y=[sens.alternatives[i] for i in ii[mask]], mode="text",
+                text=[f"{v}°" for v in ranks[mask]], hoverinfo="skip", showlegend=False,
+                textfont=dict(size=12, weight=600, color="#ffffff" if strong else None),
+            )
+        )
+    _weight_markers(fig, sens.base_weight, point)
+    step = float(sens.grid[1] - sens.grid[0])
+    fig.update_xaxes(title_text=f"Peso de «{sens.criterion}»", showgrid=False, tickformat=".1f", dtick=0.1,
+                     range=[sens.grid[0] - step / 2, sens.grid[-1] + step / 2])
+    fig.update_yaxes(autorange="reversed", showgrid=False)
+    fig = _base(fig, max(260, 48 * m + 130))
+    fig.update_layout(margin=dict(t=40))
+    return fig

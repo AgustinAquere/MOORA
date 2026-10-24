@@ -17,7 +17,8 @@ MAX_SERIES = len(CATEGORICAL)
 ACCENT = "#5266e0"  # barra destacada (mejor alternativa); índigo del color primario del tema
 NEUTRAL = "#9ba2b4"  # barras no destacadas, grupo «Otros»
 MUTED = "#868da0"  # líneas de referencia y marcadores neutros
-LABEL_BG = "rgba(128, 128, 128, 0.18)"  # fondo semitransparente para etiquetas sobre el gráfico
+SUCCESS = "#1baf7a"  # peso simulado, zona estable y resaltado de celdas actualizadas
+LABEL_BG ="rgba(128, 128, 128, 0.18)"  # fondo semitransparente para etiquetas sobre el gráfico
 
 # Escala secuencial por opacidad del índigo: cerca de 0 se funde con el fondo (claro u oscuro).
 SEQUENTIAL = [[0.0, "rgba(82, 102, 224, 0.04)"], [1.0, "rgba(82, 102, 224, 1.0)"]]

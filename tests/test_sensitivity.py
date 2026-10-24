@@ -101,6 +101,19 @@ def test_stability_interval_none_when_base_outside_range(proveedores):
     assert s.stability_interval(RATIO_SYSTEM) is None
 
 
+def test_stability_interval_at_other_weight():
+    # Mismo caso que el cálculo a mano: cruce en t = 0.5.
+    s = sensitivity_analysis([[3, 4], [4, 3]], [0.3, 0.7], [True, True], 0, steps=8, alternatives=["A", "B"])
+    assert s.stability_interval(RATIO_SYSTEM, at=0.8) == pytest.approx((0.5, 1.0), abs=1e-9)
+    assert s.stability_interval(RATIO_SYSTEM, at=0.1) == pytest.approx((0.0, 0.5), abs=1e-9)
+
+
+def test_grid_without_base_weight_is_evenly_spaced(proveedores):
+    p = proveedores
+    s = sensitivity_analysis(p["matrix"], p["weights"], p["is_benefit"], 0, steps=21, include_base=False)
+    np.testing.assert_allclose(s.grid, np.linspace(0, 1, 21))
+
+
 def test_frames_shapes(proveedores):
     p = proveedores
     s = sensitivity_analysis(p["matrix"], p["weights"], p["is_benefit"], 3, steps=11, alternatives=p["alternatives"])

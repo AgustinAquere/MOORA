@@ -118,18 +118,19 @@ class SensitivityResult:
         df[f"Mejor ({REFERENCE_POINT})"] = [self._winner_names(r) for r in self.reference_ranks]
         return df
 
-    def stability_interval(self, method: str) -> tuple[float, float] | None:
+    def stability_interval(self, method: str, at: float | None = None) -> tuple[float, float] | None:
         """Intervalo de ``w_k`` (dentro del rango analizado) en el que se mantiene
-        la mejor alternativa del peso actual. ``None`` si el peso actual está fuera
-        del rango analizado."""
+        la mejor alternativa del peso ``at`` (por defecto, el peso actual). ``None``
+        si ese peso está fuera del rango analizado."""
+        ref = self.base_weight if at is None else float(at)
         lo, hi = float(self.grid[0]), float(self.grid[-1])
-        if not lo - 1e-12 <= self.base_weight <= hi + 1e-12:
+        if not lo - 1e-12 <= ref <= hi + 1e-12:
             return None
         cps = self.change_points
         if not cps.empty:
             pts = cps.loc[cps["Método"] == method, "Peso"].to_numpy(dtype=float)
-            below = pts[pts <= self.base_weight + 1e-12]
-            above = pts[pts > self.base_weight + 1e-12]
+            below = pts[pts <= ref + 1e-12]
+            above = pts[pts > ref + 1e-12]
             if below.size:
                 lo = float(below.max())
             if above.size:
@@ -148,13 +149,15 @@ def sensitivity_analysis(
     alternatives=None,
     criteria=None,
     normalization: str = VECTOR,
+    include_base: bool = True,
 ) -> SensitivityResult:
     """Recalcula ambos rankings variando el peso del criterio ``criterion_index``.
 
     Args:
         w_min, w_max: rango del peso analizado (0 ≤ w_min < w_max ≤ 1).
-        steps: cantidad de puntos de la grilla (≥ 2). El peso actual se agrega a
-            la grilla si cae dentro del rango.
+        steps: cantidad de puntos de la grilla (≥ 2). Con ``include_base`` el peso
+            actual se agrega a la grilla si cae dentro del rango; sin él la grilla
+            queda equiespaciada.
     """
     x = as_decision_matrix(matrix)
     m, n = x.shape
@@ -181,7 +184,7 @@ def sensitivity_analysis(
     base = float(w[criterion_index])
 
     grid = np.linspace(w_min, w_max, steps)
-    if w_min <= base <= w_max:
+    if include_base and w_min <= base <= w_max:
         grid = np.unique(np.append(grid, base))
     weight_rows = np.array([redistribute_weights(w, criterion_index, t) for t in grid])
     y, d = _scores(normalized, sign, deviations, weight_rows)
