@@ -9,7 +9,7 @@ versión y el editor se vuelve a crear con los datos actuales.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
@@ -56,6 +56,16 @@ NORMALIZATIONS = NORMALIZATION_METHODS
 
 ALT_COL = "Alternativa"
 
+# Sugerencias para la unidad de medida de cada criterio (el usuario puede escribir otra).
+COMMON_UNITS = (
+    "$", "US$", "€", "%",
+    "kg", "g", "t",
+    "m", "km", "m²", "m³", "L",
+    "s", "min", "h", "días", "meses", "años",
+    "km/h", "kW", "kWh", "GB", "MB",
+    "unidades", "personas", "puntos (1–5)", "puntos (1–10)",
+)
+
 
 @dataclass
 class Problem:
@@ -67,6 +77,10 @@ class Problem:
     weights: list[float | None]  # pesos de la asignación directa
     weight_method: str = DIRECT
     normalization: str = VECTOR
+    units: list[str] = field(default_factory=list)  # unidad de medida de cada criterio ("" = sin unidad)
+
+    def __post_init__(self) -> None:
+        self.units = (list(self.units) + [""] * self.n)[: self.n]
 
     @property
     def m(self) -> int:
@@ -193,12 +207,28 @@ def resized(p: Problem, m: int, n: int) -> Problem:
         weights=p.weights[:n] + [round(new_w, 6)] * max(0, n - p.n),
         weight_method=p.weight_method,
         normalization=p.normalization,
+        units=p.units[:n],
     )
 
 
 # ---------------------------------------------------------------------------
 # Tablas editables
 # ---------------------------------------------------------------------------
+
+def criterion_header(name: str, unit: str) -> str:
+    """Nombre del criterio con su unidad entre corchetes, si tiene."""
+    return f"{name} [{unit}]".strip() if unit else name
+
+
+def with_units(names: list[str], units: list[str]) -> list[str]:
+    return [criterion_header(c, u) for c, u in zip(names, units)]
+
+
+def _strip_unit(name: str, unit: str) -> str:
+    """Quita el sufijo «[unidad]» que se agrega al mostrar el nombre en una tabla editable."""
+    suffix = f"[{unit}]"
+    return name[: -len(suffix)].rstrip() if unit and name.endswith(suffix) else name
+
 
 def matrix_editor_frame(p: Problem) -> pd.DataFrame:
     df = pd.DataFrame(p.values, columns=unique_labels(p.criteria, "C"))
@@ -232,7 +262,7 @@ def rename_criteria(edited_rows: dict) -> bool:
 def criteria_editor_frame(p: Problem) -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "Criterio": pd.Series(p.criteria, dtype=object),
+            "Criterio": pd.Series(with_units(p.criteria, p.units), dtype=object),
             "Sentido": pd.Series(p.directions, dtype=object),
             "Peso": pd.Series([np.nan if w is None else w for w in p.weights], dtype=float),
         }
@@ -250,7 +280,7 @@ def apply_matrix_edit(p: Problem, edited: pd.DataFrame) -> None:
 
 
 def apply_criteria_edit(p: Problem, edited: pd.DataFrame, include_weights: bool) -> None:
-    p.criteria = [_text(v) for v in edited["Criterio"].tolist()]
+    p.criteria = [_strip_unit(_text(v), u) for v, u in zip(edited["Criterio"].tolist(), p.units)]
     p.directions = [_text(v) for v in edited["Sentido"].tolist()]
     if include_weights:
         p.weights = [None if is_blank(v) else float(v) for v in edited["Peso"].tolist()]
@@ -300,6 +330,9 @@ def analyze(p: Problem) -> Analysis:
 
     val_report, inputs = validate_problem(p.alternatives, p.criteria, p.values, p.directions, weights)
     report.merge(val_report)
+    if inputs is not None:
+        # Desde aquí en adelante (resultados, gráficos, sensibilidad) el criterio se muestra con su unidad.
+        inputs = replace(inputs, criteria=with_units(inputs.criteria, p.units))
     analysis.inputs = inputs if report.ok else None
     if inputs is not None:
         analysis.weights_used = inputs.weights

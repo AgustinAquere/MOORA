@@ -47,7 +47,8 @@ def render() -> None:
 
     direct = p.weight_method == state.DIRECT
     column_config = {
-        "Criterio": st.column_config.TextColumn("Criterio", required=True, width="large"),
+        "Criterio": st.column_config.TextColumn("Criterio", required=True, width="large",
+                                                help="La unidad [entre corchetes] se define en el paso 1."),
         "Sentido": st.column_config.SelectboxColumn("Sentido", options=list(DIRECTIONS), required=True),
         "Peso": st.column_config.NumberColumn("Peso asignado", format="%.4f",
                                               help="Puede ingresar valores que no sumen 1 (p. ej. 35, 30, 15, 20)."),
@@ -67,7 +68,7 @@ def render() -> None:
     # Validaciones propias de este paso (la matriz se valida en el paso 1).
     report = ValidationReport()
     report.merge(validate_names(p.criteria, "criterio"))
-    labels = unique_labels(p.criteria, "C")
+    labels = state.with_units(unique_labels(p.criteria, "C"), p.units)
     report.merge(validate_directions(p.directions, labels)[0])
     if direct:
         w_report, _ = validate_weights(p.weights, labels)

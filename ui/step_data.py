@@ -12,6 +12,7 @@ from . import state
 from .components import md, nav_buttons, show_report
 
 MAX_DIM = 50
+UNITS_PER_ROW = 4
 
 
 def _load_example() -> None:
@@ -44,6 +45,38 @@ def _rename_criteria(key: str) -> None:
     if state.rename_criteria(delta.get("edited_rows", {})):
         # Recrea las tablas para que los encabezados de la matriz muestren los nombres nuevos.
         state.refresh_editors()
+
+
+def _set_unit(j: int, key: str) -> None:
+    p = state.get_problem()
+    p.units[j] = str(st.session_state.get(key) or "").strip()
+    # Recrea las tablas para que el encabezado de la matriz muestre la unidad nueva.
+    state.refresh_editors()
+
+
+def _units_section(p: state.Problem) -> None:
+    st.markdown("**Unidades de medida** (opcional)")
+    st.caption("Elija una unidad de la lista o escriba una propia. Es solo informativa: no interviene en el cálculo.")
+    nonce = st.session_state["nonce"]
+    for start in range(0, p.n, UNITS_PER_ROW):
+        cols = st.columns(UNITS_PER_ROW)
+        for j, col in zip(range(start, min(start + UNITS_PER_ROW, p.n)), cols):
+            unit = p.units[j]
+            # "" representa "sin unidad" y queda primero para poder quitar una unidad ya elegida.
+            options = ["", *state.COMMON_UNITS]
+            if unit not in options:
+                options.insert(1, unit)
+            key = f"unit_{nonce}_{j}"
+            col.selectbox(
+                p.criteria[j] or state.names_column(j),
+                options,
+                index=options.index(unit),
+                format_func=lambda u: u or "Sin unidad",
+                key=key,
+                accept_new_options=True,
+                on_change=_set_unit,
+                args=(j, key),
+            )
 
 
 def render() -> None:
@@ -106,13 +139,14 @@ def render() -> None:
         args=(names_key,),
         width="stretch",
     )
+    _units_section(p)
 
     st.subheader(f"Matriz de decisión ({p.m} × {p.n})")
     column_config = {
         state.ALT_COL: st.column_config.TextColumn(state.ALT_COL, required=True, pinned=True, width="medium"),
     }
-    for label in unique_labels(p.criteria, "C"):
-        column_config[label] = st.column_config.NumberColumn(label, format="%g")
+    for label, unit in zip(unique_labels(p.criteria, "C"), p.units):
+        column_config[label] = st.column_config.NumberColumn(state.criterion_header(label, unit), format="%g")
     edited = st.data_editor(
         ss["matrix_snapshot"],
         key=f"matrix_editor_{ss['nonce']}",
