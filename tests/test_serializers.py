@@ -1,5 +1,6 @@
 import io
 import zipfile
+from pathlib import Path
 
 import numpy as np
 import openpyxl
@@ -8,6 +9,7 @@ import pytest
 
 from data_io.examples import EXAMPLES
 from data_io.serializers import (
+    excel_sheet_names,
     problem_to_csv,
     problem_to_excel,
     read_problem,
@@ -112,6 +114,52 @@ def test_problem_round_trip(fmt):
     np.testing.assert_allclose(p.values.to_numpy(), ex.values)
     assert p.directions == ex.directions
     assert p.weights == pytest.approx(ex.weights)
+
+
+def test_problem_csv_uses_the_requested_decimal_separator():
+    """La tabla del problema mezcla texto (filas Sentido) y números: todos deben usar la coma pedida."""
+    ex = EXAMPLES["Selección de proveedores (ejemplo del TP)"]
+    text = problem_to_csv(ex.alternatives, ex.criteria, ex.values, ex.directions, ex.weights,
+                          sep=";", decimal=",").decode("utf-8-sig")
+    lines = text.splitlines()
+    assert lines[1] == "Proveedor A;120;8;10;5000"
+    assert lines[-1] == "Peso;0,35;0,3;0,15;0,2"
+    assert not any("." in line for line in lines[1:])
+
+    text = problem_to_csv(ex.alternatives, ex.criteria, ex.values, ex.directions, ex.weights,
+                          sep=",", decimal=".").decode("utf-8-sig")
+    assert text.splitlines()[-1] == "Peso,0.35,0.3,0.15,0.2"
+
+
+def test_problem_csv_template_with_empty_cells_and_weights():
+    """La plantilla del paso 1 puede tener celdas y pesos vacíos: quedan vacíos en el CSV."""
+    values = np.array([[1.5, np.nan], [2.0, 3.0]])
+    text = problem_to_csv(["A", "B"], ["C1", "C2"], values, ["Beneficio", "Costo"], [0.5, None],
+                          sep=";", decimal=",").decode("utf-8-sig")
+    assert text.splitlines()[1:] == ["A;1,5;", "B;2;3", "Sentido;Beneficio;Costo", "Peso;0,5;"]
+
+
+def test_results_csv_zip_problem_sheet_uses_decimal_comma(tp_outputs):
+    res, cmp, sens = tp_outputs
+    with zipfile.ZipFile(io.BytesIO(results_to_csv_zip(res, cmp, sens, sep=";", decimal=","))) as zf:
+        problema = zf.read(next(n for n in zf.namelist() if n.endswith("_problema.csv"))).decode("utf-8-sig")
+        resumen = zf.read(next(n for n in zf.namelist() if n.endswith("_resumen.csv"))).decode("utf-8-sig")
+    assert "Peso;0,35;0,3;0,15;0,2" in problema
+    assert "Spearman rho;0,8" in resumen
+
+
+def test_read_legacy_xls_file():
+    """Libro de Excel 97-2003 (.xls) con dos hojas: el problema está en la segunda."""
+    pytest.importorskip("xlrd")
+    data = (Path(__file__).parent / "data" / "proveedores.xls").read_bytes()
+    assert excel_sheet_names(data) == ["Notas", "Datos"]
+    p = read_problem(data, "proveedores.xls", sheet="Datos")
+    assert p.alternatives == ["Proveedor A", "Proveedor B", "Proveedor C", "Proveedor D"]
+    assert p.criteria == ["Precio", "Calidad", "Plazo", "Capacidad"]
+    np.testing.assert_allclose(p.values.to_numpy(), [[120, 8, 10, 5000], [100, 7, 15, 4000],
+                                                     [135, 9, 7, 6000], [110, 6, 12, 4500]])
+    assert p.directions == ["Costo", "Beneficio", "Costo", "Beneficio"]
+    assert p.weights == pytest.approx([0.35, 0.30, 0.15, 0.20])
 
 
 @pytest.fixture

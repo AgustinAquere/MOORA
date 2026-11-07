@@ -4,6 +4,12 @@ Aplicación web local (Python + Streamlit) para resolver problemas de decisión 
 **MOORA – Sistema de Razones** y **MOORA con Punto de Referencia** (métrica min-max de Tchebycheff).
 Trabajo práctico de *Decisiones en Escenarios Complejos*.
 
+## Guía de usuario
+
+La guía para usar el programa está en **[GUIA_DE_USUARIO.md](GUIA_DE_USUARIO.md)**. Recorre los seis pasos y
+la barra lateral. Explica qué forma deben tener los archivos Excel y CSV que se importan, cómo pasar al modo
+claro u oscuro y cómo resolver los problemas más comunes.
+
 ## Instalación y ejecución
 
 Requiere Python 3.10 o superior.
@@ -52,6 +58,7 @@ python -m pytest
 ```
 MOORA/
 ├─ Iniciar MOORA.bat       # Doble clic: crea .venv si hace falta y ejecuta launcher.py
+├─ GUIA_DE_USUARIO.md      # Guía de uso del programa, paso a paso
 ├─ launcher.py             # Verifica/instala requirements.txt, inicia Streamlit y abre el navegador
 ├─ app.py                  # Punto de entrada de Streamlit (navegación y resumen lateral)
 ├─ engine/                 # Núcleo de cálculo: funciones puras, sin dependencias de la interfaz
@@ -87,7 +94,9 @@ Sentido;Costo;Beneficio;Costo;Beneficio
 Peso;0,35;0,30;0,15;0,20
 ```
 
-El paso 1 permite descargar una plantilla con el problema actual en este formato.
+El paso 1 permite descargar una plantilla con el problema actual en este formato. Se importan archivos
+`.xlsx`, `.xls` y `.csv`. La [guía de usuario](GUIA_DE_USUARIO.md#forma-que-debe-tener-el-archivo) detalla
+qué palabras reconoce el programa y cómo lee los números.
 
 ## Validación del núcleo
 
