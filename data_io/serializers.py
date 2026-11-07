@@ -206,6 +206,34 @@ def problem_frame(alternatives, criteria, values, directions, weights) -> pd.Dat
     return pd.DataFrame(rows, columns=["Alternativa", *criteria])
 
 
+def _plain_number(value, decimal: str):
+    """Número de una columna mixta (texto y números) como texto con el separador decimal pedido.
+
+    Los enteros se escriben sin «.0» (120 en lugar de 120.0); el resto, con todas sus cifras.
+    Los textos, los vacíos y los valores que no son de punto flotante quedan como están.
+    """
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (float, np.floating)) or np.isnan(value):
+        return value
+    value = float(value)
+    text = str(int(value)) if value.is_integer() and abs(value) < 1e15 else repr(value)
+    return text.replace(".", decimal)
+
+
+def _to_csv(frame: pd.DataFrame, *, sep: str, decimal: str, index: bool) -> bytes:
+    """CSV en UTF-8 con BOM (lo abre bien Excel).
+
+    pandas aplica ``decimal`` solo a las columnas numéricas. Las columnas que mezclan texto y
+    números (p. ej. la tabla del problema, que tiene las filas «Sentido» y «Peso») se formatean
+    aparte para que usen el mismo separador decimal que el resto del archivo.
+    """
+    mixed = [j for j, dtype in enumerate(frame.dtypes) if dtype == object]
+    if mixed:
+        frame = frame.copy()
+        for j in mixed:  # por posición: los nombres de columna pueden repetirse
+            frame.iloc[:, j] = frame.iloc[:, j].map(lambda v: _plain_number(v, decimal))
+    return frame.to_csv(index=index, sep=sep, decimal=decimal).encode("utf-8-sig")
+
+
 def _autosize(ws) -> None:
     for col in ws.columns:
         width = max((len(str(c.value)) for c in col if c.value is not None), default=8)
@@ -239,7 +267,7 @@ def problem_to_excel(alternatives, criteria, values, directions, weights) -> byt
 
 def problem_to_csv(alternatives, criteria, values, directions, weights, sep: str = ",", decimal: str = ".") -> bytes:
     frame = problem_frame(alternatives, criteria, values, directions, weights)
-    return frame.to_csv(index=False, sep=sep, decimal=decimal).encode("utf-8-sig")
+    return _to_csv(frame, sep=sep, decimal=decimal, index=False)
 
 
 def result_sheets(result, comparison=None, sensitivity=None, entropy=None, problem_name: str = "", critic=None) -> dict[str, pd.DataFrame]:
@@ -310,8 +338,7 @@ def results_to_csv_zip(result, comparison=None, sensitivity=None, entropy=None, 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for i, (name, frame) in enumerate(sheets.items(), start=1):
             fname = f"{i:02d}_{name.replace(' ', '_').lower()}.csv"
-            text = frame.to_csv(index=name not in _NO_INDEX, sep=sep, decimal=decimal)
-            zf.writestr(fname, text.encode("utf-8-sig"))
+            zf.writestr(fname, _to_csv(frame, sep=sep, decimal=decimal, index=name not in _NO_INDEX))
     return buffer.getvalue()
 
 
@@ -320,4 +347,4 @@ def results_to_csv(result, comparison=None, sep: str = ",", decimal: str = ".") 
     frame = comparison.table.copy() if comparison is not None else result.results_frame()
     if "Coincide" in frame:
         frame["Coincide"] = frame["Coincide"].map({True: "Sí", False: "No"})
-    return frame.to_csv(sep=sep, decimal=decimal).encode("utf-8-sig")
+    return _to_csv(frame, sep=sep, decimal=decimal, index=True)
